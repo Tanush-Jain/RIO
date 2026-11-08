@@ -1,0 +1,493 @@
+import { apiClient } from './client';
+
+export interface GenerationScope {
+  academic_year_id: number;
+  semester_id: number;
+  department_id: number;
+  program_id: number;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  section_ids?: number[];
+  building_ids?: number[];
+  room_ids?: number[];
+  lab_ids?: number[];
+  time_slot_ids?: number[];
+}
+
+export interface TimetableEntryResult {
+  course_assignment_id: number;
+  room_id: number;
+  slot_id: number;
+  hour_type: string;
+}
+
+export interface TimetableEntryUpdate {
+  room_id?: number | null;
+  slot_id?: number | null;
+  faculty_id?: number | null;
+}
+
+export interface TimetableEntryResponse {
+  id: number;
+  version_id: number | null;
+  department_id: number | null;
+  program_id: number | null;
+  semester_id: number | null;
+  section_id: number | null;
+  batch_id: number | null;
+  course_id: number | null;
+  faculty_id: number | null;
+  room_id: number | null;
+  slot_id: number | null;
+  status: string;
+}
+
+export interface TimetableVersionResponse {
+  id: number;
+  academic_year_id: number | null;
+  version_number: string | null;
+  status: string | null;
+  created_by: number | null;
+  approved_by: number | null;
+  created_at: string;
+  published_at: string | null;
+  reason: string | null;
+}
+
+export interface TimetableEntryDetailResponse extends TimetableEntryResponse {
+  course_code?: string | null;
+  course_name?: string | null;
+  course_type?: string | null;
+  faculty_name?: string | null;
+  faculty_designation?: string | null;
+  faculty_contact?: string | null;
+  room_number?: string | null;
+  building_name?: string | null;
+  day?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  slot_type?: string | null;
+  section_name?: string | null;
+}
+
+export interface TimetableVersionDetailResponse extends TimetableVersionResponse {
+  department_name?: string | null;
+  program_name?: string | null;
+  academic_year_name?: string | null;
+  semester_number?: number | null;
+  section_name?: string | null;
+  class_teacher_name?: string | null;
+  class_teacher_designation?: string | null;
+  class_teacher_contact?: string | null;
+  timetable_entries: TimetableEntryDetailResponse[];
+}
+
+
+export interface ValidationViolation {
+  severity: string;
+  message: string;
+  code?: string | null;
+  entry_ids?: number[];
+  entity_type?: string | null;
+  entity_id?: number | null;
+  entity_name?: string | null;
+  suggestion?: string | null;
+}
+
+export interface ValidationResult {
+  is_valid: boolean;
+  violations: ValidationViolation[];
+  blocker_count?: number;
+  warning_count?: number;
+  info_count?: number;
+}
+
+export interface TimetableScore {
+  total_score: number;
+  hard_violations: number;
+  soft_violations: number;
+  room_utilization_pct: number;
+  faculty_workload_balance: number;
+  student_gap_minutes_avg: number;
+  faculty_gap_quality: number;
+  student_gap_quality: number;
+  preferred_slot_quality: number;
+  room_change_quality: number;
+  late_lab_quality: number;
+  workload_balance_quality: number;
+}
+
+export interface GenerationSummary {
+  status: string;
+  message: string;
+  loaded_sections: number;
+  loaded_courses: number;
+  loaded_faculty: number;
+  loaded_rooms: number;
+  loaded_time_slots: number;
+  solve_time_seconds?: number;
+  generated_entries?: TimetableEntryResult[];
+  diagnostics?: string[];
+  score?: TimetableScore;
+}
+
+export const generateTimetable = async (scope: GenerationScope): Promise<GenerationSummary> => {
+  // We use a custom timeout because timetable generation can take up to 60 seconds (solver time limit).
+  const response = await apiClient.post('/timetable/generate', scope, { timeout: 70000 });
+  return response.data;
+};
+
+export const getTimetableVersions = async (academicYearId?: number): Promise<TimetableVersionResponse[]> => {
+  const params = academicYearId ? { academic_year_id: academicYearId } : {};
+  const response = await apiClient.get('/timetable/versions', { params });
+  return response.data;
+};
+
+export const getTimetableVersion = async (versionId: number): Promise<TimetableVersionDetailResponse> => {
+  const response = await apiClient.get(`/timetable/versions/${versionId}`);
+  return response.data;
+};
+
+export const validateTimetableVersion = async (versionId: number): Promise<ValidationResult> => {
+  const response = await apiClient.post(`/timetable/versions/${versionId}/validate`);
+  return response.data;
+};
+
+export const updateTimetableEntry = async (entryId: number, updates: TimetableEntryUpdate): Promise<TimetableEntryResponse> => {
+  const response = await apiClient.patch(`/timetable/entries/${entryId}`, updates);
+  return response.data;
+};
+
+export const finalizeTimetableVersion = async (versionId: number): Promise<{ message: string; version_id: number; status: string }> => {
+  const response = await apiClient.post(`/timetable/versions/${versionId}/finalize`);
+  return response.data;
+};
+
+export const publishTimetableVersion = async (versionId: number): Promise<{ message: string; version_id: number; status: string }> => {
+  const response = await apiClient.post(`/timetable/versions/${versionId}/publish`);
+  return response.data;
+};
+
+export interface PersonalTimetableEntry {
+  id: number;
+  version_id?: number | null;
+  version_number?: string | null;
+  academic_year_name?: string | null;
+  semester_number?: number | null;
+  department_name?: string | null;
+  program_name?: string | null;
+  section_name?: string | null;
+  batch_name?: string | null;
+  course_code?: string | null;
+  course_name?: string | null;
+  course_type?: string | null;
+  faculty_name?: string | null;
+  faculty_designation?: string | null;
+  room_number?: string | null;
+  building_name?: string | null;
+  day?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  slot_type?: string | null;
+  status: string;
+  is_substituted?: boolean;
+  substitute_faculty_id?: number | null;
+  substitute_faculty_name?: string | null;
+  original_faculty_name?: string | null;
+  substitution_id?: number | null;
+  substitution_status?: string | null;
+}
+
+export interface FacultyTimetableResponse {
+  faculty_id?: number | null;
+  faculty_code?: string | null;
+  faculty_name?: string | null;
+  designation?: string | null;
+  department_name?: string | null;
+  total_teaching_hours: number;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  sections_as_class_teacher?: string[];
+  entries: PersonalTimetableEntry[];
+}
+
+export interface StudentTimetableResponse {
+  student_id?: number | null;
+  student_code?: string | null;
+  student_name?: string | null;
+  department_name?: string | null;
+  program_name?: string | null;
+  semester_number?: number | null;
+  section_name?: string | null;
+  batch_name?: string | null;
+  academic_year_name?: string | null;
+  admission_batch?: string | null;
+  class_teacher_name?: string | null;
+  class_teacher_designation?: string | null;
+  class_teacher_contact?: string | null;
+  total_class_hours: number;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  entries: PersonalTimetableEntry[];
+}
+
+export const getFacultyMyTimetable = async (academicYearId?: number): Promise<FacultyTimetableResponse> => {
+  const params = academicYearId ? { academic_year_id: academicYearId } : {};
+  const response = await apiClient.get('/faculty/my-timetable', { params });
+  return response.data;
+};
+
+export const getStudentMyTimetable = async (academicYearId?: number): Promise<StudentTimetableResponse> => {
+  const params = academicYearId ? { academic_year_id: academicYearId } : {};
+  const response = await apiClient.get('/student/my-timetable', { params });
+  return response.data;
+};
+
+export interface DepartmentTimetableResponse {
+  department_id: number;
+  department_name: string;
+  department_code: string;
+  total_entries: number;
+  entries: PersonalTimetableEntry[];
+}
+
+export interface LiveClassItem {
+  course_code: string;
+  course_title: string;
+  room: string;
+  faculty: string;
+  start_time: string;
+  end_time: string;
+  class_status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
+}
+
+export interface LiveStatusResponse {
+  date: string;
+  day: string;
+  current_time: string;
+  ongoing_class: LiveClassItem | null;
+  next_class: LiveClassItem | null;
+  classes: LiveClassItem[];
+}
+
+export interface StudentCourseItem {
+  id: number;
+  course_code: string;
+  course_name: string;
+  course_type: string;
+  credits: number;
+  faculty_name?: string | null;
+  faculty_designation?: string | null;
+  section_name?: string | null;
+}
+
+export const getFacultyDepartmentTimetable = async (params?: {
+  academic_year_id?: number;
+  section_id?: number;
+  semester_id?: number;
+  day?: string;
+}): Promise<DepartmentTimetableResponse> => {
+  const response = await apiClient.get<DepartmentTimetableResponse>('/faculty/department-timetable', { params });
+  return response.data;
+};
+
+export const getFacultyLiveStatus = async (): Promise<LiveStatusResponse> => {
+  const response = await apiClient.get<LiveStatusResponse>('/faculty/live-status');
+  return response.data;
+};
+
+export const getStudentLiveStatus = async (): Promise<LiveStatusResponse> => {
+  const response = await apiClient.get<LiveStatusResponse>('/student/live-status');
+  return response.data;
+};
+
+export const getStudentCourses = async (): Promise<StudentCourseItem[]> => {
+  const response = await apiClient.get<StudentCourseItem[]>('/student/courses');
+  return response.data;
+};
+
+// ==========================================
+// CANONICAL TIMETABLE WORKFLOW (SIMPLIFIED)
+// ==========================================
+
+export interface TimetableAcademicYearOption {
+  id: number;
+  name: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_current?: boolean;
+}
+
+export interface TimetableSemesterOption {
+  id: number;
+  semester_number: number;
+  term?: string | null;
+  academic_year_id: number;
+}
+
+export interface TimetableDepartmentOption {
+  id: number;
+  name: string;
+  department_code: string;
+}
+
+export interface TimetableSectionOption {
+  id: number;
+  section_name: string;
+  department_id?: number | null;
+  semester_id?: number | null;
+}
+
+export interface TimetablePreviewEntry {
+  course_assignment_id?: number | null;
+  course_id?: number | null;
+  course_code?: string | null;
+  course_name?: string | null;
+  course_type?: string | null;
+  faculty_id?: number | null;
+  faculty_name?: string | null;
+  room_id?: number | null;
+  room_number?: string | null;
+  building_name?: string | null;
+  slot_id?: number | null;
+  day?: string | null;
+  period_number?: number | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  slot_type?: string | null;
+  section_id?: number | null;
+  section_name?: string | null;
+  hour_type?: string | null;
+}
+
+export interface TimetablePreviewSectionSummary {
+  section_id: number;
+  section_name: string;
+  entry_count: number;
+}
+
+export interface TimetableValidationViolation {
+  rule: string;
+  severity: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface TimetablePreviewResponse {
+  academic_year_id: number;
+  semester_id: number;
+  department_id: number;
+  academic_year_name: string;
+  semester_number: number;
+  department_name: string;
+  status: string;
+  is_valid: boolean;
+  can_publish: boolean;
+  blocker_count: number;
+  warning_count: number;
+  violations: TimetableValidationViolation[];
+  sections: TimetablePreviewSectionSummary[];
+  entries: TimetablePreviewEntry[];
+  solve_time_seconds: number;
+  score?: Record<string, unknown> | null;
+  existing_published: boolean;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  generated_at?: string;
+}
+
+export interface CanonicalTimetableItem {
+  id: number;
+  academic_year_id: number;
+  semester_id: number;
+  section_id: number;
+  academic_year_name?: string | null;
+  semester_number?: number | null;
+  section_name?: string | null;
+  department_id?: number | null;
+  department_name?: string | null;
+  program_name?: string | null;
+  status: string;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  created_at: string;
+  published_at?: string | null;
+  class_teacher_name?: string | null;
+  class_teacher_designation?: string | null;
+  class_teacher_contact?: string | null;
+  entries: TimetablePreviewEntry[];
+}
+
+export interface PublishTimetableRequest {
+  academic_year_id: number;
+  semester_id: number;
+  department_id: number;
+  working_days?: 'MON_FRI' | 'MON_SAT';
+  entries: TimetablePreviewEntry[];
+}
+
+export interface PublishTimetableResponse {
+  success: boolean;
+  message: string;
+  published_timetables: CanonicalTimetableItem[];
+  total_entries_published: number;
+}
+
+export const getTimetableAcademicYears = async (): Promise<TimetableAcademicYearOption[]> => {
+  const response = await apiClient.get<TimetableAcademicYearOption[]>('/timetable/academic-years');
+  return response.data;
+};
+
+export const getTimetableSemesters = async (academicYearId: number): Promise<TimetableSemesterOption[]> => {
+  const response = await apiClient.get<TimetableSemesterOption[]>('/timetable/semesters', {
+    params: { academic_year_id: academicYearId },
+  });
+  return response.data;
+};
+
+export const getTimetableDepartments = async (
+  academicYearId: number,
+  semesterId: number
+): Promise<TimetableDepartmentOption[]> => {
+  const response = await apiClient.get<TimetableDepartmentOption[]>('/timetable/departments', {
+    params: { academic_year_id: academicYearId, semester_id: semesterId },
+  });
+  return response.data;
+};
+
+export const getTimetableSections = async (
+  academicYearId?: number,
+  departmentId?: number,
+  semesterId?: number
+): Promise<TimetableSectionOption[]> => {
+  const response = await apiClient.get<TimetableSectionOption[]>('/timetable/sections', {
+    params: {
+      academic_year_id: academicYearId,
+      department_id: departmentId,
+      semester_id: semesterId,
+    },
+  });
+  return response.data;
+};
+
+export const getCanonicalTimetables = async (params: {
+  academic_year_id: number;
+  semester_id: number;
+  department_id: number;
+}): Promise<CanonicalTimetableItem[]> => {
+  const response = await apiClient.get<CanonicalTimetableItem[]>('/timetable/canonical', { params });
+  return response.data;
+};
+
+export const generateTimetablePreview = async (scope: {
+  academic_year_id: number;
+  semester_id: number;
+  department_id: number;
+  section_ids?: number[];
+  working_days?: 'MON_FRI' | 'MON_SAT';
+}): Promise<TimetablePreviewResponse> => {
+  const response = await apiClient.post<TimetablePreviewResponse>('/timetable/generate-preview', scope);
+  return response.data;
+};
+
+export const publishCanonicalTimetable = async (
+  payload: PublishTimetableRequest
+): Promise<PublishTimetableResponse> => {
+  const response = await apiClient.post<PublishTimetableResponse>('/timetable/publish', payload);
+  return response.data;
+};
