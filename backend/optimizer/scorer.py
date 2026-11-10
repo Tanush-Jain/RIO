@@ -1,3 +1,11 @@
+"""
+Deterministic quality scoring for generated timetable candidates.
+
+This module translates validation findings and timetable characteristics
+into a comparable score. It evaluates a candidate; it does not generate,
+persist, or publish timetable entries.
+"""
+
 import math
 from typing import List, Dict
 from collections import defaultdict
