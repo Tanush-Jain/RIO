@@ -1,3 +1,11 @@
+"""
+Shared FastAPI authentication and authorization dependencies.
+
+Route handlers use these dependencies to resolve the authenticated user
+from a bearer token and enforce role requirements before protected work runs.
+Database sessions are supplied through the shared get_db dependency.
+"""
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
