@@ -1,3 +1,11 @@
+"""
+HTTP endpoints for timetable previews, lifecycle actions, and retrieval.
+
+The router delegates timetable generation and persistence to domain services,
+while applying request validation, database access, and role-based route
+protection at the API boundary.
+"""
+
 import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
