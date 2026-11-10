@@ -1,3 +1,11 @@
+"""
+Constraint-programming engine for generating candidate campus timetables.
+
+The solver builds and solves an OR-Tools CP-SAT model from validated optimizer
+input. It returns a structured result for the service layer; persistence,
+authorization, and publication remain outside this module.
+"""
+
 import time
 from typing import List, Dict, Tuple, Optional, Any
 from collections import defaultdict
